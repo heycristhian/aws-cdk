@@ -13,9 +13,14 @@ public class AwsCdkApp {
         ClusterStack clusterStack = new ClusterStack(app, "Cluster", vpcStack.getVpc());
         clusterStack.addDependency(vpcStack);
 
+        //CREATING RDS (DATABASE)
+        RdsStack rdsStack = new RdsStack(app, "Rds", vpcStack.getVpc());
+        rdsStack.addDependency(vpcStack);
+
         //CREATING SERVICE (TASK/ALB/TARGET GROUP/LOGAWS)
         ServiceStack serviceStack = new ServiceStack(app, "Service", clusterStack.getCluster());
         serviceStack.addDependency(clusterStack);
+        serviceStack.addDependency(rdsStack);
 
         app.synth();
     }

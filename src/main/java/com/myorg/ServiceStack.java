@@ -1,6 +1,7 @@
 package com.myorg;
 
 import software.amazon.awscdk.Duration;
+import software.amazon.awscdk.Fn;
 import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
@@ -19,6 +20,9 @@ import software.amazon.awscdk.services.logs.LogGroup;
 import software.amazon.awscdk.services.logs.LogGroupProps;
 import software.constructs.Construct;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class ServiceStack extends Stack {
     public ServiceStack(final Construct scope, final String id, Cluster cluster) {
         this(scope, id, null, cluster);
@@ -26,6 +30,13 @@ public class ServiceStack extends Stack {
 
     public ServiceStack(final Construct scope, final String id, final StackProps props, Cluster cluster) {
         super(scope, id, props);
+
+        Map<String, String> envVariables = new HashMap<>();
+        String rdsAddress = Fn.importValue("rds-endpoint");
+        envVariables.put("SPRING_DATASOURCE_URL", "jdbc:postgresql://" + rdsAddress + ":5432/financeiro?createDatabaseIfNotExist=true");
+        envVariables.put("SPRING_DATASOURCE_USERNAME", "heycristhian");
+        envVariables.put("SPRING_DATASOURCE_PASSWORD", Fn.importValue("rds-password"));
+
 
         ApplicationLoadBalancedFargateService service = new ApplicationLoadBalancedFargateService(this, "ALB01",
                 ApplicationLoadBalancedFargateServiceProps.builder()
@@ -35,7 +46,7 @@ public class ServiceStack extends Stack {
                         .memoryLimitMiB(1024)
                         .desiredCount(2)
                         .listenerPort(8080)
-                        .taskImageOptions(getTaskImageOptions())
+                        .taskImageOptions(getTaskImageOptions(envVariables))
                         .publicLoadBalancer(true)
                         .build());
 
@@ -63,12 +74,13 @@ public class ServiceStack extends Stack {
 
     }
 
-    private ApplicationLoadBalancedTaskImageOptions getTaskImageOptions() {
+    private ApplicationLoadBalancedTaskImageOptions getTaskImageOptions(Map<String, String> envVariables) {
         return ApplicationLoadBalancedTaskImageOptions.builder()
                 .containerName("controle-financeiro")
                 .image(ContainerImage.fromRegistry("heycristhian/controle-financeiro:latest"))
                 .containerPort(8080)
                 .logDriver(getLogDriver())
+                .environment(envVariables)
                 .build();
     }
 
